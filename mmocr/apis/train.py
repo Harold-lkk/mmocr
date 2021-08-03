@@ -34,7 +34,7 @@ def train_detector(model,
             num_gpus=len(cfg.gpu_ids)),
         **({} if torch.__version__ != 'parrots' else dict(
                prefetch_num=2,
-               pin_memory=False,
+               #    pin_memory=False,
            )),
         **dict((k, cfg.data[k]) for k in [
                    'samples_per_gpu',
