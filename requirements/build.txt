@@ -2,4 +2,3 @@
 numpy
 Polygon3
 pyclipper
-torch>=1.1
