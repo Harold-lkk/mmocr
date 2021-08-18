@@ -3,7 +3,7 @@ _base_ = './_base_/dbnet_r50_fpnc_textocr.py'
 base_channels = 32
 model = dict(
     type='DBNet',
-    pretrained='pavi://faster_resnet50_1by2.pth',
+    pretrained='pretrain/faster_resnet50_1by2.pth',
     backbone=dict(
         type='FasterResNet',
         faster=True,
@@ -27,4 +27,4 @@ custom_imports = dict(
         'mmocr.utils.publish_pavi_model_hook',
     ],
     allow_failed_imports=False)
-custom_hooks = [dict(type='PublishPaviModelHook', upload_path='dbnet/demo')]
+# custom_hooks = [dict(type='PublishPaviModelHook', upload_path='dbnet/demo')]

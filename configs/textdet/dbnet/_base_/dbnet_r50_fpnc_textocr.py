@@ -23,7 +23,7 @@ workflow = [('train', 1)]
 
 model = dict(
     type='DBNet',
-    pretrained='torchvision://resnet50',
+    pretrained='pretrain/resnet50-19c8e357.pth',
     backbone=dict(
         type='ResNet',
         depth=50,
@@ -46,16 +46,15 @@ model = dict(
                 negative_ratio=3,
                 reduction='none',
                 eps=1e-6,
-                loss_weight=10),
-            threshold_head=dict(
-                type='MaskSmoothL1Loss', beta=1, loss_weight=1),
+                loss_weight=5),
+            threshold_head=dict(type='MaskL1Loss', beta=1, loss_weight=10),
             diff_binary_head=dict(
-                type='MaskDiceLoss', eps=1e-6, loss_weight=5))),
+                type='MaskDiceLoss', eps=1e-6, loss_weight=1))),
     train_cfg=None,
     test_cfg=None)
 
 dataset_type = 'IcdarDataset'
-data_root = '/home/SENSETIME/liukuikun/workspace/datasets/mmocr/textocr'
+data_root = 'datasets/textocr'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 
@@ -109,22 +108,22 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
-    val_dataloader=dict(samples_per_gpu=1),
-    test_dataloader=dict(samples_per_gpu=1),
+    samples_per_gpu=16,
+    workers_per_gpu=4,
+    val_dataloader=dict(samples_per_gpu=8),
+    test_dataloader=dict(samples_per_gpu=8),
     train=dict(
         type=dataset_type,
         ann_file=data_root + '/instances_training.json',
         # for debugging top k imgs
-        select_first_k=50,
+        # select_first_k=50,
         img_prefix=data_root,
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
         ann_file=data_root + '/instances_val.json',
         img_prefix=data_root,
-        select_first_k=50,
+        # select_first_k=50,
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
@@ -142,6 +141,6 @@ custom_imports = dict(
     ],
     allow_failed_imports=False)
 
-custom_hooks = [
-    dict(type='PublishPaviModelHook', upload_path='checkpoints/demo')
-]
+# custom_hooks = [
+#     dict(type='PublishPaviModelHook', upload_path='checkpoints/demo')
+# ]
