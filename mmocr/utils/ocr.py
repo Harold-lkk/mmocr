@@ -11,8 +11,8 @@ import torch
 from mmcv.image.misc import tensor2imgs
 from mmcv.runner import load_checkpoint
 from mmcv.utils.config import Config
-from mmdet.apis import init_detector
 
+from mmocr.apis import init_detector
 from mmocr.apis.inference import model_inference
 from mmocr.core.visualize import det_recog_show_result
 from mmocr.datasets.kie_dataset import KIEDataset
@@ -278,6 +278,14 @@ class MMOCR:
             'RobustScanner': {
                 'config': 'robust_scanner/robustscanner_r31_academic.py',
                 'ckpt': 'robustscanner/robustscanner_r31_academic-5f05874f.pth'
+            },
+            'SATRN': {
+                'config': 'satrn/satrn_academic.py',
+                'ckpt': 'satrn/satrn_academic_20210809-59c8c92d.pth'
+            },
+            'SATRN_sm': {
+                'config': 'satrn/satrn_small.py',
+                'ckpt': 'satrn/satrn_small_20210811-2badf6fc.pth'
             },
             'SEG': {
                 'config': 'seg/seg_r31_1by16_fpnocr_academic.py',

@@ -66,6 +66,7 @@ Supported algorithms:
 - [x] [NRTR](configs/textrecog/nrtr/README.md) (ICDAR'2019)
 - [x] [RobustScanner](configs/textrecog/robust_scanner/README.md) (ECCV'2020)
 - [x] [SAR](configs/textrecog/sar/README.md) (AAAI'2019)
+- [x] [SATRN](configs/textrecog/satrn/README.md) (CVPR'2020 Workshop on Text and Documents in the Deep Learning Era)
 - [x] [SegOCR](configs/textrecog/seg/README.md) (Manuscript'2021)
 
 </details>
@@ -95,10 +96,10 @@ This project is released under the [Apache 2.0 license](LICENSE).
 If you find this project useful in your research, please consider cite:
 
 ```bibtex
-@misc{mmocr2021,
+@article{mmocr2021,
     title={MMOCR:  A Comprehensive Toolbox for Text Detection, Recognition and Understanding},
-    author={MMOCR Contributors},
-    howpublished = {\url{https://github.com/open-mmlab/mmocr}},
+    author={Kuang, Zhanghui and Sun, Hongbin and Li, Zhizhong and Yue, Xiaoyu and Lin, Tsui Hin and Chen, Jianyong and Wei, Huaqiang and Zhu, Yiqin and Gao, Tong and Zhang, Wenwei and Chen, Kai and Zhang, Wayne and Lin, Dahua},
+    journal= {arXiv preprint arXiv:2108.06543},
     year={2021}
 }
 ```
