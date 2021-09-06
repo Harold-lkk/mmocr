@@ -41,15 +41,9 @@ model = dict(
         in_channels=256,
         loss=dict(
             type='SpeDBLoss',
-            probability_head=dict(
-                type='MaskBalanceBCELoss',
-                negative_ratio=3,
-                reduction='none',
-                eps=1e-6,
-                loss_weight=5),
-            threshold_head=dict(type='MaskL1Loss', beta=1, loss_weight=10),
-            diff_binary_head=dict(
-                type='MaskDiceLoss', eps=1e-6, loss_weight=1))),
+            probability_head=dict(type='MaskBalanceBCELoss', loss_weight=5),
+            threshold_head=dict(type='MaskL1Loss', loss_weight=10),
+            diff_binary_head=dict(type='MaskDiceLoss', loss_weight=1))),
     train_cfg=None,
     test_cfg=None)
 
@@ -136,6 +130,7 @@ evaluation = dict(interval=1, metric='hmean-iou')
 custom_imports = dict(
     imports=[
         'mmocr.models.textdet.losses.db_loss_spe',
+        'mmocr.datasets.ocr_e2e_dataset',
         'mmocr.utils.pavi_progress_logger',
         'mmocr.utils.publish_pavi_model_hook',
     ],

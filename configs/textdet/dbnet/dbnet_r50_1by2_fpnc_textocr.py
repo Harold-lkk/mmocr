@@ -23,6 +23,7 @@ custom_imports = dict(
     imports=[
         'mmocr.models.common.backbones.faster_resnet',
         'mmocr.models.textdet.losses.db_loss_spe',
+        'mmocr.datasets.ocr_e2e_dataset',
         'mmocr.utils.pavi_progress_logger',
         'mmocr.utils.publish_pavi_model_hook',
     ],
