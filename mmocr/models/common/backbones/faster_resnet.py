@@ -1,7 +1,8 @@
 import torch.nn as nn
 from mmcv.cnn import build_conv_layer, build_norm_layer
 from mmdet.models.backbones.resnet import ResNet
-from mmdet.models.builder import BACKBONES
+
+from mmocr.models.builder import BACKBONES
 
 
 @BACKBONES.register_module()
