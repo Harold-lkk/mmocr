@@ -41,7 +41,7 @@ class MaskSmoothL1Loss(nn.Module):
 class MaskBalanceBCELoss(nn.Module):
 
     def __init__(self,
-                 reduction='mean',
+                 reduction='none',
                  negative_ratio=3,
                  eps=1e-6,
                  loss_weight=1):

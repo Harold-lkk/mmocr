@@ -23,9 +23,9 @@ workflow = [('train', 1)]
 
 model = dict(
     type='DBNet',
-    pretrained='pretrain/resnet50-19c8e357.pth',
+    # pretrained='pretrain/resnet50-19c8e357.pth',
     backbone=dict(
-        type='ResNet',
+        type='mmdet.ResNet',
         depth=50,
         num_stages=4,
         out_indices=(0, 1, 2, 3),
@@ -48,17 +48,9 @@ model = dict(
     test_cfg=None)
 
 dataset_type = 'IcdarDataset'
-data_root = 'datasets/textocr'
+data_root = 'datasets/icdar2015/imgs/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-
-# from official dbnet code
-# img_norm_cfg = dict(
-#     mean=[122.67891434, 116.66876762, 104.00698793],
-#     std=[255, 255, 255],
-#     to_rgb=False)
-# for visualizing img, pls uncomment it.
-# img_norm_cfg = dict(mean=[0, 0, 0], std=[1, 1, 1], to_rgb=True)
 
 train_pipeline = [
     dict(type='LoadImageFromFile'),
@@ -102,27 +94,28 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=16,
+    samples_per_gpu=1,
     workers_per_gpu=4,
     val_dataloader=dict(samples_per_gpu=8),
     test_dataloader=dict(samples_per_gpu=8),
+    shuffle=False,
     train=dict(
         type=dataset_type,
-        ann_file=data_root + '/instances_training.json',
+        ann_file=data_root + '/textdet_annotations_train.json',
         # for debugging top k imgs
         # select_first_k=50,
-        img_prefix=data_root,
+        img_prefix=data_root + '/training',
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
-        ann_file=data_root + '/instances_val.json',
-        img_prefix=data_root,
+        ann_file=data_root + '/textdet_annotations_test.json',
+        img_prefix=data_root + '/training',
         # select_first_k=50,
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + '/instances_val.json',
-        img_prefix=data_root,
+        ann_file=data_root + '/textdet_annotations_test.json',
+        img_prefix=data_root + '/training',
         # select_first_k=100,
         pipeline=test_pipeline))
 evaluation = dict(interval=1, metric='hmean-iou')

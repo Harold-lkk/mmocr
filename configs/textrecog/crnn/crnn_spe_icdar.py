@@ -14,11 +14,11 @@ model = dict(
 
 dataset_type = 'OCRDataset'
 
-train_img_prefix = 'datasets/icdar/text_img/'
-train_ann_file = 'datasets/icdar/label_train.txt'
+train_img_prefix = 'datasets/icdar2015/text_img'
+train_ann_file = 'datasets/icdar2015/label_train.txt'
 
-test_img_prefix = 'datasets/icdar/text_img/'
-test_ann_file = 'datasets/icdar/label_test.txt'
+test_img_prefix = 'datasets/icdar2015/text_img'
+test_ann_file = 'datasets/icdar2015/label_test.txt'
 
 img_norm_cfg = dict(mean=[0.5], std=[0.5])
 train_pipeline = [
@@ -49,7 +49,7 @@ test_pipeline = [
     dict(
         type='Collect',
         keys=['img'],
-        meta_keys=['filename', 'resize_shape', 'text', 'valid_ratio']),
+        meta_keys=['filename', 'resize_shape', 'valid_ratio']),
 ]
 
 loader = dict(
@@ -61,7 +61,7 @@ loader = dict(
         keys_idx=[0, 1],
         separator=' '))
 data = dict(
-    samples_per_gpu=64,
+    samples_per_gpu=32,
     workers_per_gpu=4,
     val_dataloader=dict(samples_per_gpu=1),
     test_dataloader=dict(samples_per_gpu=1),
@@ -112,6 +112,6 @@ workflow = [('train', 1)]
 # imports
 custom_imports = dict(
     imports=[
-        'mmocr.models.textrecog.losses.spe_ctc_loss.py',
+        'mmocr.models.textrecog.losses.spe_ctc_loss',
     ],
     allow_failed_imports=False)

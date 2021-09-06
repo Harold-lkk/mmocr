@@ -315,7 +315,7 @@ def main():
     else:
         distributed = True
         init_dist(args.launcher, **text_det_config.dist_params)
-
+    text_det_config.data.test.type = 'E2eIcdarDataset'
     # build the dataloader
     dataset = build_dataset(text_det_config.data.test, dict(test_mode=True))
     # step 1: give default values and override (if exist) from cfg.data
@@ -368,4 +368,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    eval_results, dataset_merge_results = main()
+    print(eval_results)
