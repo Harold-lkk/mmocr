@@ -2,42 +2,13 @@
 import math
 
 import torch
-import torch.nn as nn
 
 from mmocr.models.builder import LOSSES
+from mmocr.models.textrecog.losses import CTCLoss as _CTCLoss
 
 
-@LOSSES.register_module()
-class SpeCTCLoss(nn.Module):
-    """Implementation of loss module for CTC-loss based text recognition.
-
-    Args:
-        flatten (bool): If True, use flattened targets, else padded targets.
-        blank (int): Blank label. Default 0.
-        reduction (str): Specifies the reduction to apply to the output,
-            should be one of the following: ('none', 'mean', 'sum').
-        zero_infinity (bool): Whether to zero infinite losses and
-            the associated gradients. Default: False.
-            Infinite losses mainly occur when the inputs
-            are too short to be aligned to the targets.
-    """
-
-    def __init__(self,
-                 flatten=True,
-                 blank=0,
-                 reduction='mean',
-                 zero_infinity=False,
-                 **kwargs):
-        super().__init__()
-        assert isinstance(flatten, bool)
-        assert isinstance(blank, int)
-        assert isinstance(reduction, str)
-        assert isinstance(zero_infinity, bool)
-
-        self.flatten = flatten
-        self.blank = blank
-        self.ctc_loss = nn.CTCLoss(
-            blank=blank, reduction=reduction, zero_infinity=zero_infinity)
+@LOSSES.register_module(force=True)
+class CTCLoss(_CTCLoss):
 
     def forward(self, outputs, targets_dict, img_metas=None):
         valid_ratios = None
