@@ -1,7 +1,8 @@
 import torch
 import torch.nn.functional as F
-from mmdet.models.builder import LOSSES, build_loss
 from torch import nn
+
+from mmocr.models.builder import LOSSES, build_loss
 
 
 @LOSSES.register_module()
@@ -124,42 +125,6 @@ class SpeDBLoss(nn.Module):
         self.threshold_loss = build_loss(threshold_head)
         self.diff_binary_loss = build_loss(diff_binary_head)
 
-    def bitmasks2tensor(self, bitmasks, target_sz):
-        """Convert Bitmasks to tensor.
-
-        Args:
-            bitmasks (list[BitMasks]): The BitMasks list. Each item is for
-                one img.
-            target_sz (tuple(int, int)): The target tensor size of KxHxW
-                with K being the number of kernels.
-
-        Returns
-            result_tensors (list[tensor]): The list of kernel tensors. Each
-                element is for one kernel level.
-        """
-        assert isinstance(bitmasks, list)
-        assert isinstance(target_sz, tuple)
-
-        batch_size = len(bitmasks)
-        num_levels = len(bitmasks[0])
-
-        result_tensors = []
-
-        for level_inx in range(num_levels):
-            kernel = []
-            for batch_inx in range(batch_size):
-                mask = torch.from_numpy(bitmasks[batch_inx].masks[level_inx])
-                mask_sz = mask.shape
-                pad = [
-                    0, target_sz[1] - mask_sz[1], 0, target_sz[0] - mask_sz[0]
-                ]
-                mask = F.pad(mask, pad, mode='constant', value=0)
-                kernel.append(mask)
-            kernel = torch.stack(kernel)
-            result_tensors.append(kernel)
-
-        return result_tensors
-
     def forward(self, preds, downsample_ratio, gt_shrink, gt_shrink_mask,
                 gt_thr, gt_thr_mask):
         """Compute DBNet loss.
@@ -191,24 +156,26 @@ class SpeDBLoss(nn.Module):
         pred_prob = preds[:, 0, :, :]
         pred_thr = preds[:, 1, :, :]
         pred_db = preds[:, 2, :, :]
-        feature_sz = preds.size()
 
         keys = ['gt_shrink', 'gt_shrink_mask', 'gt_thr', 'gt_thr_mask']
         gt = {}
         for k in keys:
             gt[k] = eval(k)
             gt[k] = [item.rescale(downsample_ratio) for item in gt[k]]
-            gt[k] = self.bitmasks2tensor(gt[k], feature_sz[2:])
-            gt[k] = [item.to(preds.device) for item in gt[k]]
-        gt['gt_shrink'][0] = (gt['gt_shrink'][0] > 0).float()
+            gt[k] = [
+                gt[k][batch_inx].to_tensor(torch.float32, preds.device)
+                for batch_inx in range(len(gt[k]))
+            ]
+            gt[k] = torch.cat(gt[k])
+        gt['gt_shrink'] = (gt['gt_shrink'] > 0).float()
 
-        probability_loss = self.probability_loss(pred_prob, gt['gt_shrink'][0],
-                                                 gt['gt_shrink_mask'][0])
+        probability_loss = self.probability_loss(pred_prob, gt['gt_shrink'],
+                                                 gt['gt_shrink_mask'])
 
-        threshold_loss = self.threshold_loss(pred_thr, gt['gt_thr'][0],
-                                             gt['gt_thr_mask'][0])
-        diff_binary_loss = self.diff_binary_loss(pred_db, gt['gt_shrink'][0],
-                                                 gt['gt_shrink_mask'][0])
+        threshold_loss = self.threshold_loss(pred_thr, gt['gt_thr'],
+                                             gt['gt_thr_mask'])
+        diff_binary_loss = self.diff_binary_loss(pred_db, gt['gt_shrink'],
+                                                 gt['gt_shrink_mask'])
 
         results = dict(
             probability_loss=probability_loss,
