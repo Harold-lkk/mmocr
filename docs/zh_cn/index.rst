@@ -9,7 +9,7 @@
 
    install.md
    getting_started.md
-   demo.md
+   ../../demo/README_zh-CN.md
    training.md
    testing.md
    deployment.md

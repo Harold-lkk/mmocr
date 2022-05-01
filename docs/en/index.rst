@@ -9,7 +9,7 @@ You can switch between English and Chinese in the lower-left corner of the layou
 
    install.md
    getting_started.md
-   demo.md
+   ../../demo/README.md
    training.md
    testing.md
    deployment.md

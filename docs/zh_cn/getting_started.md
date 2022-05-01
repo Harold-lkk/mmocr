@@ -18,7 +18,7 @@ MMOCR 支持许多种类数据集，这些数据集根据其相应任务的类�
 python mmocr/utils/ocr.py demo/demo_text_ocr.jpg --print-result --imshow
 ```
 
-其检测结果将被打印出来，并弹出一个新窗口显示结果。更多示例和完整说明可以在[示例](demo.md)中找到。
+其检测结果将被打印出来，并弹出一个新窗口显示结果。更多示例和完整说明可以在[示例](../../demo/README_zh-CN.md)中找到。
 
 ## 训练
 
