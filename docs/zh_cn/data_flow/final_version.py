@@ -40,15 +40,16 @@ class DemoLoss(nn.Module):
         return targets
 
     def forward(self, outputs, data_samples):
-        return self.loss_ce(outputs, self.get_target(data_samples))
+        return self.loss_ce(outputs, self.get_target(outputs, data_samples))
 
 
 class DemoPostprocessor:
 
-    def __call__(self, x, data_samples):
-        pred = torch.argmax(x, dim=1)
-        data_samples.pred_text = LabelData()
-        data_samples.pred_text.item = pred
+    def __call__(self, outputs, data_samples):
+        predictions = torch.argmax(outputs, dim=1)
+        for ds, pred in zip(data_samples, predictions):
+            ds.pred_text = LabelData()
+            ds.pred_text.item = pred
         return data_samples
 
 
@@ -96,7 +97,7 @@ class DemoRecognizer(BaseModel):
     def forward(self, inputs, data_samples, mode):
         if mode == 'loss':
             return self.loss(inputs, data_samples)
-        elif mode == 'pred':
+        elif mode == 'predict':
             return self.predict(inputs, data_samples)
 
 
@@ -105,8 +106,8 @@ class DemoMetric(BaseMetric):
     def process(self, data_batch, data_samples):
         for data_sample in data_samples:
             self.results.append(
-                (data_sample.pred_text.item == data_sample.gt_text.item).type(
-                    torch.float).item())
+                (data_sample.get('pred_text').get('item') == data_sample.get(
+                    'gt_text').get('item')).type(torch.float).item())
 
     def compute_metrics(self, results):
         return dict(accuracy=sum(results) / len(results))
@@ -150,5 +151,5 @@ runner = Runner(
     train_cfg=dict(by_epoch=True, max_epochs=1, val_interval=1),
     val_dataloader=val_dataloader,
     val_cfg=dict(),
-    val_evaluator=dict(type=DemoMetric))
+    val_evaluator=[dict(type=DemoMetric)])
 runner.train()
