@@ -2,6 +2,7 @@
 from .dbnet import DBNet
 from .drrg import DRRG
 from .fcenet import FCENet
+from .fsgnet import FSGNet
 from .mmdet_wrapper import MMDetWrapper
 from .panet import PANet
 from .psenet import PSENet
@@ -10,5 +11,5 @@ from .textsnake import TextSnake
 
 __all__ = [
     'SingleStageTextDetector', 'DBNet', 'PANet', 'PSENet', 'TextSnake',
-    'FCENet', 'DRRG', 'MMDetWrapper'
+    'FCENet', 'DRRG', 'MMDetWrapper', 'FSGNet'
 ]
