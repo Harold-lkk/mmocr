@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from .abcdet_head import ABCDetHead
 from .base import BaseTextDetHead
 from .db_head import DBHead
 from .drrg_head import DRRGHead
@@ -9,5 +10,5 @@ from .textsnake_head import TextSnakeHead
 
 __all__ = [
     'PSEHead', 'PANHead', 'DBHead', 'FCEHead', 'TextSnakeHead', 'DRRGHead',
-    'BaseTextDetHead'
+    'BaseTextDetHead', 'ABCDetHead'
 ]

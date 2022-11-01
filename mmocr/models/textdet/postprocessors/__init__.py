@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from .abcnet_postprocessor import ABCNetDetPostprocessor
 from .base import BaseTextDetPostProcessor
 from .db_postprocessor import DBPostprocessor
 from .drrg_postprocessor import DRRGPostprocessor
@@ -10,5 +11,5 @@ from .textsnake_postprocessor import TextSnakePostprocessor
 __all__ = [
     'PSEPostprocessor', 'PANPostprocessor', 'DBPostprocessor',
     'DRRGPostprocessor', 'FCEPostprocessor', 'TextSnakePostprocessor',
-    'BaseTextDetPostProcessor'
+    'BaseTextDetPostProcessor', 'ABCNetDetPostprocessor'
 ]
