@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from .abcnet import ABCNetDet
 from .dbnet import DBNet
 from .drrg import DRRG
 from .fcenet import FCENet
@@ -10,5 +11,5 @@ from .textsnake import TextSnake
 
 __all__ = [
     'SingleStageTextDetector', 'DBNet', 'PANet', 'PSENet', 'TextSnake',
-    'FCENet', 'DRRG', 'MMDetWrapper'
+    'FCENet', 'DRRG', 'MMDetWrapper', 'ABCNetDet'
 ]
