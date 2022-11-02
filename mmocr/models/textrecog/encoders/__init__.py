@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from .abc_encoder import ABCEncoder
 from .abi_encoder import ABIEncoder
 from .base import BaseEncoder
 from .channel_reduction_encoder import ChannelReductionEncoder
@@ -8,5 +9,5 @@ from .satrn_encoder import SATRNEncoder
 
 __all__ = [
     'SAREncoder', 'NRTREncoder', 'BaseEncoder', 'ChannelReductionEncoder',
-    'SATRNEncoder', 'ABIEncoder'
+    'SATRNEncoder', 'ABIEncoder', 'ABCEncoder'
 ]
