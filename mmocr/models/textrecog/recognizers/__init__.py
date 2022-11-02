@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from .abcnet import ABCNetRec
 from .abinet import ABINet
 from .base import BaseRecognizer
 from .crnn import CRNN
@@ -11,5 +12,5 @@ from .satrn import SATRN
 
 __all__ = [
     'BaseRecognizer', 'EncoderDecoderRecognizer', 'CRNN', 'SARNet', 'NRTR',
-    'RobustScanner', 'SATRN', 'ABINet', 'MASTER'
+    'RobustScanner', 'SATRN', 'ABINet', 'MASTER', 'ABCNetRec'
 ]
