@@ -12,19 +12,22 @@ from .img_utils import crop_img, warp_img
 from .mask_utils import fill_hole
 from .parsers import LineJsonParser, LineStrParser
 from .point_utils import point_distance, points_center
-from .polygon_utils import (boundary_iou, crop_polygon, is_poly_inside_rect,
-                            offset_polygon, poly2bbox, poly2shapely,
-                            poly_intersection, poly_iou, poly_make_valid,
-                            poly_union, polys2shapely, rescale_polygon,
-                            rescale_polygons, shapely2poly, sort_points,
-                            sort_vertex, sort_vertex8)
+from .polygon_utils import (bezier2poly, boundary_iou, crop_polygon,
+                            is_poly_inside_rect, offset_polygon, poly2bbox,
+                            poly2bezier, poly2shapely, poly_intersection,
+                            poly_iou, poly_make_valid, poly_union,
+                            polys2shapely, rescale_polygon, rescale_polygons,
+                            shapely2poly, sort_points, sort_vertex,
+                            sort_vertex8)
 from .setup_env import register_all_modules
 from .string_utils import StringStripper
 from .typing_utils import (ColorType, ConfigType, DetSampleList,
-                           InitConfigType, KIESampleList, MultiConfig,
-                           OptConfigType, OptDetSampleList, OptInitConfigType,
-                           OptKIESampleList, OptMultiConfig, OptRecSampleList,
-                           OptTensor, RecForwardResults, RecSampleList)
+                           InitConfigType, InstanceList, KIESampleList,
+                           LabelList, MultiConfig, OptConfigType,
+                           OptDetSampleList, OptInitConfigType,
+                           OptInstanceList, OptKIESampleList, OptLabelList,
+                           OptMultiConfig, OptRecSampleList, OptTensor,
+                           RangeType, RecForwardResults, RecSampleList)
 
 __all__ = [
     'collect_env', 'is_3dlist', 'is_type_list', 'is_none_or_type', 'equal_len',
@@ -42,5 +45,7 @@ __all__ = [
     'OptConfigType', 'OptDetSampleList', 'OptInitConfigType', 'OptMultiConfig',
     'OptRecSampleList', 'RecSampleList', 'MultiConfig', 'OptTensor',
     'ColorType', 'OptKIESampleList', 'KIESampleList', 'is_archive',
-    'check_integrity', 'list_files', 'get_md5'
+    'check_integrity', 'list_files', 'get_md5', 'InstanceList',
+    'OptInstanceList', 'LabelList', 'OptLabelList', 'RangeType', 'poly2bezier',
+    'bezier2poly'
 ]
