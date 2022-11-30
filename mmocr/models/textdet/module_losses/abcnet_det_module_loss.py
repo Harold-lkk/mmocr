@@ -1,130 +1,126 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from typing import Dict, List, Tuple
+
 import torch
-import torch.nn.functional as F
 from mmdet.models.task_modules.prior_generators import MlvlPointGenerator
 from mmdet.models.utils import multi_apply
 from mmdet.utils import reduce_mean
-from torch import nn
+from torch import Tensor
 
 from mmocr.registry import MODELS, TASK_UTILS
+from mmocr.utils import ConfigType, DetSampleList, RangeType, poly2bezier
+from .base import BaseTextDetModuleLoss
 
 INF = 1e8
 
 
 @MODELS.register_module()
-class ABCNetDetModuleLoss(nn.Module):
-    """The class for implementing FCOS loss.
+class ABCNetDetModuleLoss(BaseTextDetModuleLoss):
+    """Anchor-free head used in `FCOS <https://arxiv.org/abs/1904.01355>`_.
+
+    The FCOS head does not use anchor boxes. Instead bounding boxes are
+    predicted at each pixel and a centerness measure is used to suppress
+    low-quality predictions.
+    Here norm_on_bbox, centerness_on_reg, dcn_on_last_conv are training
+    tricks used in official repo, which will bring remarkable mAP gains
+    of up to 4.9. Please see https://github.com/tianzhi0549/FCOS for
+    more detail.
 
     Args:
         num_classes (int): Number of categories excluding the background
             category.
-        strides (tuple): Downsample factor of each feature map.
-        regress_ranges (tuple[tuple[int, int]]): Regress range of multiple
+        in_channels (int): Number of channels in the input feature map.
+        strides (Sequence[int] or Sequence[Tuple[int, int]]): Strides of points
+            in multiple feature levels. Defaults to (4, 8, 16, 32, 64).
+        regress_ranges (Sequence[Tuple[int, int]]): Regress range of multiple
             level points.
-        center_sampling (bool): If true, use center sampling. Default: False.
-        center_sample_radius (float): Radius of center sampling. Default: 1.5.
-        norm_on_bbox (bool): If true, normalize the regression targets
-            with FPN strides. Default: False.
-        bbox_coder (dict): Config of bbox coder. Defaults
-            'DistancePointBBoxCoder'.
-        with_bezier (bool): If specified as True, the detection head accepts
-            Bezier inputs and outputs.
-        loss_cls (dict): Config of classification loss.
-        loss_bbox (dict): Config of localization loss.
-        loss_centerness (dict): Config of centerness loss.
-    """
+        center_sampling (bool): If true, use center sampling.
+            Defaults to False.
+        center_sample_radius (float): Radius of center sampling.
+            Defaults to 1.5.
+        norm_on_bbox (bool): If true, normalize the regression targets with
+            FPN strides. Defaults to False.
+        centerness_on_reg (bool): If true, position centerness on the
+            regress branch. Please refer to https://github.com/tianzhi0549/FCOS/issues/89#issuecomment-516877042.
+            Defaults to False.
+        loss_cls (:obj:`ConfigDict` or dict): Config of classification loss.
+        loss_bbox (:obj:`ConfigDict` or dict): Config of localization loss.
+        loss_centerness (:obj:`ConfigDict`, or dict): Config of centerness
+            loss.
 
-    def __init__(self,
-                 num_classes,
-                 strides=(4, 8, 16, 32, 64),
-                 regress_ranges=((-1, 64), (64, 128), (128, 256), (256, 512),
-                                 (512, INF)),
-                 center_sampling=False,
-                 center_sample_radius=1.5,
-                 bbox_coder=dict(type='mmdet.DistancePointBBoxCoder'),
-                 with_bezier=False,
-                 norm_on_bbox=False,
-                 use_sigmoid_cls=True,
-                 loss_cls=dict(
-                     type='mmdet.FocalLoss',
-                     use_sigmoid=True,
-                     gamma=2.0,
-                     alpha=0.25,
-                     loss_weight=1.0),
-                 loss_bbox=dict(type='mmdet.IoULoss', loss_weight=1.0),
-                 loss_centerness=dict(
-                     type='mmdet.CrossEntropyLoss',
-                     use_sigmoid=True,
-                     loss_weight=1.0)):
-        assert isinstance(with_bezier, bool)
+    Example:
+        >>> self = FCOSHead(11, 7)
+        >>> feats = [torch.rand(1, 7, s, s) for s in [4, 8, 16, 32, 64]]
+        >>> cls_score, bbox_pred, centerness = self.forward(feats)
+        >>> assert len(cls_score) == len(self.scales)
+    """  # noqa: E501
+
+    def __init__(
+        self,
+        num_classes: int = 1,
+        bbox_coder: ConfigType = dict(type='mmdet.DistancePointBBoxCoder'),
+        regress_ranges: RangeType = ((-1, 64), (64, 128), (128, 256),
+                                     (256, 512), (512, INF)),
+        strides: List[int] = (8, 16, 32, 64, 128),
+        center_sampling: bool = True,
+        center_sample_radius: float = 1.5,
+        norm_on_bbox: bool = True,
+        loss_cls: ConfigType = dict(
+            type='mmdet.FocalLoss',
+            use_sigmoid=True,
+            gamma=2.0,
+            alpha=0.25,
+            loss_weight=1.0),
+        loss_bbox: ConfigType = dict(type='mmdet.GIoULoss', loss_weight=1.0),
+        loss_centerness: ConfigType = dict(
+            type='mmdet.CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
+        loss_bezier: ConfigType = dict(
+            type='mmdet.SmoothL1Loss', reduction='mean', loss_weight=1.0)
+    ) -> None:
         super().__init__()
-
         self.num_classes = num_classes
-        self.with_bezier = with_bezier
         self.strides = strides
         self.prior_generator = MlvlPointGenerator(strides)
-        self.num_base_priors = self.prior_generator.num_base_priors[0]
         self.regress_ranges = regress_ranges
         self.center_sampling = center_sampling
         self.center_sample_radius = center_sample_radius
-        self.bbox_coder = TASK_UTILS.build(bbox_coder)
         self.norm_on_bbox = norm_on_bbox
-        self.use_sigmoid_cls = use_sigmoid_cls
-        if self.use_sigmoid_cls:
+        self.loss_centerness = MODELS.build(loss_centerness)
+        self.loss_cls = MODELS.build(loss_cls)
+        self.loss_bbox = MODELS.build(loss_bbox)
+        self.loss_bezier = MODELS.build(loss_bezier)
+        self.bbox_coder = TASK_UTILS.build(bbox_coder)
+        use_sigmoid_cls = loss_cls.get('use_sigmoid', False)
+        if use_sigmoid_cls:
             self.cls_out_channels = num_classes
         else:
             self.cls_out_channels = num_classes + 1
-        self.loss_cls = MODELS.build(loss_cls)
-        self.loss_bbox = MODELS.build(loss_bbox)
-        self.loss_centerness = MODELS.build(loss_centerness)
 
-    def forward(
-        self,
-        preds,
-        img_metas,
-        gt_bboxes,
-        gt_labels,
-        gt_bboxes_ignore=None,
-        gt_bezier_pts=None,
-    ):
-        """Compute loss of the head.
+    def forward(self, inputs: Tuple[Tensor],
+                data_samples: DetSampleList) -> Dict:
+        """Compute DBNet loss.
 
         Args:
-            cls_scores (list[Tensor]): Box scores for each scale level,
-                each is a 4D-tensor, the channel number is
-                num_points * num_classes.
-            bbox_preds (list[Tensor]): Box energies / deltas for each scale
-                level, each is a 4D-tensor, the channel number is
-                num_points * 4.
-            bezier_preds (list[Tensor]): Placeholder.
-            centernesses (list[Tensor]): centerness for each scale level, each
-                is a 4D-tensor, the channel number is num_points * 1.
-            gt_bboxes (list[Tensor]): Ground truth bboxes for each image with
-                shape (num_gts, 4) in [tl_x, tl_y, br_x, br_y] format.
-            gt_labels (list[Tensor]): class indices corresponding to each box
-            img_metas (list[dict]): Meta information of each image, e.g.,
-                image size, scaling factor, etc.
-            gt_bboxes_ignore (None | list[Tensor]): specify which bounding
-                boxes can be ignored when computing the loss.
+            inputs (tuple(tensor)): Raw predictions from model, containing
+                ``cls_scores``, ``bbox_preds``, ``beizer_preds`` and
+                ``centernesses``.
+                Each is a tensor of shape :math:`(N, H, W)`.
+            data_samples (list[TextDetDataSample]): The data samples.
 
         Returns:
-            dict[str, Tensor]: A dictionary of loss components.
+            results(dict): The dict for abcnet-det losses with loss_prob, \
+                loss_db and loss_thr.
         """
-        cls_scores = preds['cls_scores']
-        bbox_preds = preds['bbox_preds']
-        centernesses = preds['centernesses']
-        if self.with_bezier:
-            bezier_preds = preds['bezier_preds']
-        assert len(cls_scores) == len(bbox_preds) == len(centernesses)
-        if self.with_bezier:
-            assert len(bezier_preds) == len(centernesses)
+        cls_scores, bbox_preds, centernesses, beizer_preds = inputs
+        assert len(cls_scores) == len(bbox_preds) == len(centernesses) == len(
+            beizer_preds)
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
         all_level_points = self.prior_generator.grid_priors(
             featmap_sizes,
             dtype=bbox_preds[0].dtype,
             device=bbox_preds[0].device)
         labels, bbox_targets, bezier_targets = self.get_targets(
-            all_level_points, gt_bboxes, gt_labels, gt_bezier_pts)
+            all_level_points, data_samples)
 
         num_imgs = cls_scores[0].size(0)
         # flatten cls_scores, bbox_preds and centerness
@@ -140,18 +136,17 @@ class ABCNetDetModuleLoss(nn.Module):
             centerness.permute(0, 2, 3, 1).reshape(-1)
             for centerness in centernesses
         ]
+        flatten_bezier_preds = [
+            bezier_pred.permute(0, 2, 3, 1).reshape(-1, 16)
+            for bezier_pred in beizer_preds
+        ]
         flatten_cls_scores = torch.cat(flatten_cls_scores)
         flatten_bbox_preds = torch.cat(flatten_bbox_preds)
         flatten_centerness = torch.cat(flatten_centerness)
+        flatten_bezier_preds = torch.cat(flatten_bezier_preds)
         flatten_labels = torch.cat(labels)
         flatten_bbox_targets = torch.cat(bbox_targets)
-        if self.with_bezier:
-            flatten_bezier_preds = [
-                bezier_pred.permute(0, 2, 3, 1).reshape(-1, 16)
-                for bezier_pred in bezier_preds
-            ]  # TBD
-            flatten_bezier_preds = torch.cat(flatten_bezier_preds)
-            flatten_bezier_targets = torch.cat(bezier_targets)
+        flatten_bezier_targets = torch.cat(bezier_targets)
         # repeat points to align with bbox_preds
         flatten_points = torch.cat(
             [points.repeat(num_imgs, 1) for points in all_level_points])
@@ -168,11 +163,10 @@ class ABCNetDetModuleLoss(nn.Module):
 
         pos_bbox_preds = flatten_bbox_preds[pos_inds]
         pos_centerness = flatten_centerness[pos_inds]
+        pos_bezier_preds = flatten_bezier_preds[pos_inds]
         pos_bbox_targets = flatten_bbox_targets[pos_inds]
         pos_centerness_targets = self.centerness_target(pos_bbox_targets)
-        if self.with_bezier:
-            pos_bezier_preds = flatten_bezier_preds[pos_inds]
-            pos_bezier_targets = flatten_bezier_targets[pos_inds]
+        pos_bezier_targets = flatten_bezier_targets[pos_inds]
         # centerness weighted iou loss
         centerness_denorm = max(
             reduce_mean(pos_centerness_targets.sum().detach()), 1e-6)
@@ -183,7 +177,6 @@ class ABCNetDetModuleLoss(nn.Module):
                 pos_points, pos_bbox_preds)
             pos_decoded_target_preds = self.bbox_coder.decode(
                 pos_points, pos_bbox_targets)
-
             loss_bbox = self.loss_bbox(
                 pos_decoded_bbox_preds,
                 pos_decoded_target_preds,
@@ -191,51 +184,41 @@ class ABCNetDetModuleLoss(nn.Module):
                 avg_factor=centerness_denorm)
             loss_centerness = self.loss_centerness(
                 pos_centerness, pos_centerness_targets, avg_factor=num_pos)
+            loss_bezier = self.loss_bezier(
+                pos_bezier_preds,
+                pos_bezier_targets,
+                weight=pos_centerness_targets[:, None],
+                avg_factor=centerness_denorm)
         else:
             loss_bbox = pos_bbox_preds.sum()
             loss_centerness = pos_centerness.sum()
-            if self.with_bezier:
-                loss_bezier = pos_bezier_preds.sum()
+            loss_bezier = pos_bezier_preds.sum()
 
-        if self.with_bezier:
-            loss_bezier = F.smooth_l1_loss(
-                pos_bezier_preds, pos_bezier_targets, reduction='none')
-            loss_bezier = loss_bezier.mean(dim=-1) * pos_centerness_targets
-            loss_bezier = loss_bezier.sum() / centerness_denorm
-
-        result_loss = dict(
+        return dict(
             loss_cls=loss_cls,
             loss_bbox=loss_bbox,
-            loss_centerness=loss_centerness)
+            loss_centerness=loss_centerness,
+            loss_bezier=loss_bezier)
 
-        if self.with_bezier:
-            result_loss['loss_bezier'] = loss_bezier
-
-        return result_loss
-
-    def get_targets(self,
-                    points,
-                    gt_bboxes_list,
-                    gt_labels_list,
-                    gt_bezier_list=None):
+    def get_targets(
+            self, points: List[Tensor],
+            data_samples: DetSampleList) -> Tuple[List[Tensor], List[Tensor]]:
         """Compute regression, classification and centerness targets for points
         in multiple images.
 
         Args:
             points (list[Tensor]): Points of each fpn level, each has shape
                 (num_points, 2).
-            gt_bboxes_list (list[Tensor]): Ground truth bboxes of each image,
-                each has shape (num_gt, 4).
-            gt_labels_list (list[Tensor]): Ground truth labels of each box,
-                each has shape (num_gt,).
-            gt_bezier_list (list[Tensor]): Ground truth bezier points of each
-                image, each has shape (num_gt, 16).
+            batch_gt_instances (list[:obj:`InstanceData`]): Batch of
+                gt_instance.  It usually includes ``bboxes`` and ``labels``
+                attributes.
 
         Returns:
-            tuple:
-                concat_lvl_labels (list[Tensor]): Labels of each level. \
-                concat_lvl_bbox_targets (list[Tensor]): BBox targets of each \
-                    level.
+            tuple: Targets of each level.
+
+            - concat_lvl_labels (list[Tensor]): Labels of each level.
+            - concat_lvl_bbox_targets (list[Tensor]): BBox targets of each \
+            level.
         """
         assert len(points) == len(self.regress_ranges)
         num_levels = len(points)
@@ -252,13 +235,9 @@ class ABCNetDetModuleLoss(nn.Module):
         num_points = [center.size(0) for center in points]
 
         # get labels and bbox_targets of each image
-        if not self.with_bezier:
-            gt_bezier_list = [None] * len(gt_bboxes_list)
         labels_list, bbox_targets_list, bezier_targets_list = multi_apply(
-            self._get_target_single,
-            gt_bboxes_list,
-            gt_labels_list,
-            gt_bezier_list,
+            self._get_targets_single,
+            data_samples,
             points=concat_points,
             regress_ranges=concat_regress_ranges,
             num_points_per_lvl=num_points)
@@ -269,12 +248,10 @@ class ABCNetDetModuleLoss(nn.Module):
             bbox_targets.split(num_points, 0)
             for bbox_targets in bbox_targets_list
         ]
-        if self.with_bezier:
-            bezier_targets_list = [
-                bezier_targets.split(num_points, 0)
-                for bezier_targets in bezier_targets_list
-            ]
-
+        bezier_targets_list = [
+            bezier_targets.split(num_points, 0)
+            for bezier_targets in bezier_targets_list
+        ]
         # concat per level image
         concat_lvl_labels = []
         concat_lvl_bbox_targets = []
@@ -284,33 +261,30 @@ class ABCNetDetModuleLoss(nn.Module):
                 torch.cat([labels[i] for labels in labels_list]))
             bbox_targets = torch.cat(
                 [bbox_targets[i] for bbox_targets in bbox_targets_list])
-            if self.with_bezier:
-                bezier_targets = torch.cat([
-                    bezier_targets[i] for bezier_targets in bezier_targets_list
-                ])
+            bezier_targets = torch.cat(
+                [bezier_targets[i] for bezier_targets in bezier_targets_list])
             if self.norm_on_bbox:
                 bbox_targets = bbox_targets / self.strides[i]
-                if self.with_bezier:
-                    bezier_targets = bezier_targets / self.strides[i]
+                bezier_targets = bezier_targets / self.strides[i]
             concat_lvl_bbox_targets.append(bbox_targets)
-            if self.with_bezier:
-                concat_lvl_bezier_targets.append(bezier_targets)
-        return concat_lvl_labels, concat_lvl_bbox_targets, \
-            concat_lvl_bezier_targets
+            concat_lvl_bezier_targets.append(bezier_targets)
+        return (concat_lvl_labels, concat_lvl_bbox_targets,
+                concat_lvl_bezier_targets)
 
-    def _get_target_single(self, gt_bboxes, gt_labels, gt_beziers, points,
-                           regress_ranges, num_points_per_lvl):
+    def _get_targets_single(
+            self, data_sample, points: Tensor, regress_ranges: Tensor,
+            num_points_per_lvl: List[int]) -> Tuple[Tensor, Tensor]:
         """Compute regression and classification targets for a single image."""
         num_points = points.size(0)
-        num_gts = gt_labels.size(0)
+        gt_instances = data_sample.gt_instances
+        num_gts = len(gt_instances)
+        gt_bboxes = gt_instances.bboxes
+        gt_labels = gt_instances.labels
+
         if num_gts == 0:
-            if self.with_bezier:
-                return gt_labels.new_full((num_points,), self.num_classes), \
-                    gt_bboxes.new_zeros((num_points, 4)), \
-                    gt_beziers.new_zeros((num_points, 16))
-            else:
-                return gt_labels.new_full((num_points,), self.num_classes), \
-                    gt_bboxes.new_zeros((num_points, 4)), None
+            return gt_labels.new_full((num_points,), self.num_classes), \
+                   gt_bboxes.new_zeros((num_points, 4)), \
+                   gt_bboxes.new_zeros((num_points, 16))
 
         areas = (gt_bboxes[:, 2] - gt_bboxes[:, 0]) * (
             gt_bboxes[:, 3] - gt_bboxes[:, 1])
@@ -329,15 +303,14 @@ class ABCNetDetModuleLoss(nn.Module):
         top = ys - gt_bboxes[..., 1]
         bottom = gt_bboxes[..., 3] - ys
         bbox_targets = torch.stack((left, top, right, bottom), -1)
-
-        bezier_targets = []
-        if self.with_bezier:
-            bezier_pts = gt_beziers.view(-1, 8, 2)  # num_gts, 8, 2
-            x_targets = bezier_pts[:, :, 0][None] - xs[:, :, None]
-            y_targets = bezier_pts[:, :, 1][None] - ys[:, :, None]
-            bezier_targets = torch.cat((x_targets, y_targets),
-                                       -1)  # num_points, num_gts, 16
-
+        polygons = gt_instances.polygons
+        beziers = gt_bboxes.new([poly2bezier(poly) for poly in polygons])
+        gt_instances.beziers = beziers
+        beziers = beziers[None].expand(num_points, num_gts, 8, 2)
+        beziers_left = beziers[..., 0] - xs[..., None]
+        beziers_right = beziers[..., 1] - ys[..., None]
+        bezier_targets = torch.stack((beziers_left, beziers_right), dim=-1)
+        bezier_targets = bezier_targets.view(num_points, num_gts, 16)
         if self.center_sampling:
             # condition1: inside a `center bbox`
             radius = self.center_sample_radius
@@ -392,12 +365,11 @@ class ABCNetDetModuleLoss(nn.Module):
         labels = gt_labels[min_area_inds]
         labels[min_area == INF] = self.num_classes  # set as BG
         bbox_targets = bbox_targets[range(num_points), min_area_inds]
-        if self.with_bezier:
-            bezier_targets = bezier_targets[range(num_points), min_area_inds]
-        return labels, bbox_targets, bezier_targets
-        # return labels, bbox_targets
+        bezier_targets = bezier_targets[range(num_points), min_area_inds]
 
-    def centerness_target(self, pos_bbox_targets):
+        return labels, bbox_targets, bezier_targets
+
+    def centerness_target(self, pos_bbox_targets: Tensor) -> Tensor:
         """Compute centerness targets.
 
         Args:
