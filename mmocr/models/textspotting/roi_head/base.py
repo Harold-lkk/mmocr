@@ -22,10 +22,10 @@ class BaseRoIHead(BaseModule, metaclass=ABCMeta):
         return hasattr(self,
                        'roi_extractor') and self.roi_extractor is not None
 
-    @abstractmethod
-    def init_assigner_sampler(self, *args, **kwargs):
-        """Initialize assigner and sampler."""
-        pass
+    # @abstractmethod
+    # def init_assigner_sampler(self, *args, **kwargs):
+    #     """Initialize assigner and sampler."""
+    #     pass
 
     @abstractmethod
     def loss(self, x: Tuple[Tensor], data_samples: DetSampleList):

@@ -102,6 +102,7 @@ class TextSpottingLocalVisualizer(BaseLocalVisualizer):
 
         if draw_gt:
             gt_bboxes = data_sample.gt_instances.get('bboxes', None)
+
             gt_texts = data_sample.gt_instances.texts
             gt_polygons = data_sample.gt_instances.get('polygons', None)
             gt_img_data = self._draw_instances(image, gt_bboxes, gt_polygons,
@@ -115,6 +116,7 @@ class TextSpottingLocalVisualizer(BaseLocalVisualizer):
             pred_bboxes = pred_instances.get('bboxes', None)
             pred_texts = pred_instances.texts
             pred_polygons = pred_instances.get('polygons', None)
+            pred_bboxes = np.array(pred_bboxes)
             if pred_bboxes is None:
                 pred_bboxes = [poly2bbox(poly) for poly in pred_polygons]
                 pred_bboxes = np.array(pred_bboxes)

@@ -130,7 +130,7 @@ class ABCNetDetPostprocessor(BaseTextDetPostProcessor):
             pred_instances.scores = mlvl_scores.detach().cpu().numpy()
             pred_instances.labels = mlvl_labels.detach().cpu().numpy()
             if self.with_bezier:
-                pred_instances.beziers = mlvl_beziers.detach().cpu().numpy()
+                pred_instances.beziers = mlvl_beziers.detach().reshape(-1, 16)
             pred_instances.polygons = []
             data_sample.pred_instances = pred_instances
             return data_sample
@@ -144,7 +144,7 @@ class ABCNetDetPostprocessor(BaseTextDetPostProcessor):
         ).cpu().numpy()
         if self.with_bezier:
             pred_instances.beziers = mlvl_beziers[
-                keep_idxs][:max_per_img].detach().cpu().numpy()
+                keep_idxs][:max_per_img].detach().reshape(-1, 16)
             bezier_points = pred_instances.beziers.reshape(-1, 2, 4, 2)
             pred_instances.polygons = list(map(bezier2polygon, bezier_points))
         else:

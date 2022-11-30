@@ -231,7 +231,7 @@ def bezier2polygon(bezier_points: np.ndarray,
     """
     assert num_sample > 0, 'The sampling number should greater than 0'
 
-    bezier_points = np.asarray(bezier_points)
+    bezier_points = np.asarray(bezier_points.cpu().numpy())
     assert np.prod(
         bezier_points.shape) == 16, 'Need 8 Bezier control points to continue!'
 
@@ -245,7 +245,7 @@ def bezier2polygon(bezier_points: np.ndarray,
 
     # Convert points to polygon
     points = np.concatenate((points[:, :2], points[:, 2:]), axis=0)
-    return points.tolist()
+    return points
 
 
 def sort_points(points):

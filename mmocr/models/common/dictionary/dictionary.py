@@ -170,17 +170,17 @@ class Dictionary:
                 self._dict.append(self.end_token)
                 self.end_idx = len(self._dict) - 1
 
-        # padding
-        self.padding_idx = None
-        if self.with_padding:
-            self._dict.append(self.padding_token)
-            self.padding_idx = len(self._dict) - 1
-
         # unknown
         self.unknown_idx = None
         if self.with_unknown and self.unknown_token is not None:
             self._dict.append(self.unknown_token)
             self.unknown_idx = len(self._dict) - 1
+
+        # padding
+        self.padding_idx = None
+        if self.with_padding:
+            self._dict.append(self.padding_token)
+            self.padding_idx = len(self._dict) - 1
 
         # update char2idx
         self._char2idx = {}

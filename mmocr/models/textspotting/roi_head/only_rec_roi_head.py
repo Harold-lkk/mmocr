@@ -4,7 +4,9 @@ from typing import Tuple
 from torch import Tensor
 
 from mmocr.registry import MODELS, TASK_UTILS
-from mmocr.utils import recog2spotting, spotting2recog
+from mmocr.structures import TextRecogDataSample  # noqa F401
+from mmocr.utils.data_sample_convert import (instance_data2recog,
+                                             merge_recog2spotting)
 from mmocr.utils.typing import DetSampleList, OptMultiConfig
 from .base import BaseRoIHead
 
@@ -17,6 +19,7 @@ class OnlyRecRoIHead(BaseRoIHead):
                  sampler: OptMultiConfig = None,
                  roi_extractor: OptMultiConfig = None,
                  rec_head: OptMultiConfig = None,
+                 postprocessor=None,
                  init_cfg=None):
         super().__init__(init_cfg)
         if sampler is not None:
@@ -41,10 +44,13 @@ class OnlyRecRoIHead(BaseRoIHead):
         """
 
         # assign gts and sample proposals
-        data_samples = [self.sampler(ds) for ds in data_samples]
+        proposals = [
+            self.sampler(ds.pred_instances, ds.gt_instances)
+            for ds in data_samples
+        ]
 
-        bbox_feats = self.roi_extractor(inputs, data_samples)
-        rec_data_samples = spotting2recog(data_samples, 'proposal')
+        bbox_feats = self.roi_extractor(inputs, proposals)
+        rec_data_samples = instance_data2recog(proposals)
         rec_loss = self.rec_head.loss(bbox_feats, rec_data_samples)
 
         return rec_loss
@@ -52,7 +58,17 @@ class OnlyRecRoIHead(BaseRoIHead):
     def predict(self, inputs: Tuple[Tensor],
                 data_samples: DetSampleList) -> DetSampleList:
 
-        bbox_feats = self.roi_extractor(inputs, data_samples)
-        rec_data_samples = spotting2recog(data_samples)
+        pred_instances = [ds.pred_instances for ds in data_samples]
+        bbox_feats = self.roi_extractor(inputs, pred_instances)
+        if bbox_feats.size(0) == 0:
+            return []
+        rec_data_samples = instance_data2recog(pred_instances)
         rec_predicts = self.rec_head.predict(bbox_feats, rec_data_samples)
-        return recog2spotting(rec_predicts, data_samples)
+        data_samples = merge_recog2spotting(rec_predicts, data_samples)
+        return data_samples
+
+    def forward(self, inputs, data_samples):
+        pred_instances = [ds.pred_instances for ds in data_samples]
+        bbox_feats = self.roi_extractor(inputs, pred_instances)
+        rec_data_samples = instance_data2recog(pred_instances)
+        return self.rec_head(bbox_feats, rec_data_samples)

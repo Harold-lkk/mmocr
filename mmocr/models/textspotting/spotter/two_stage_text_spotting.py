@@ -1,13 +1,14 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-from mmocr.models import BaseTextDetector
+from mmocr.models.textdet.detectors.base import BaseTextDetector
 from mmocr.registry import MODELS
 from mmocr.structures import TextDetDataSample  # noqa: F401
 from mmocr.structures import TextRecogDataSample  # noqa: F401
 from mmocr.structures import TextSpottingDataSample  # noqa: F401
-from mmocr.utils import det_to_spotting, spotting_to_det
+from mmocr.utils.data_sample_convert import det_to_spotting, spotting_to_det
 from mmocr.utils.typing import OptConfigType, OptMultiConfig
 
 
+@MODELS.register_module()
 class TwoStageTextSpotter(BaseTextDetector):
 
     def __init__(self,
@@ -16,6 +17,7 @@ class TwoStageTextSpotter(BaseTextDetector):
                  det_head=None,
                  roi_head=None,
                  data_preprocessor: OptConfigType = None,
+                 postprocessor: OptConfigType = None,
                  init_cfg: OptMultiConfig = None):
 
         super().__init__(
@@ -68,5 +70,12 @@ class TwoStageTextSpotter(BaseTextDetector):
         det_data_samples = spotting_to_det(data_samples)
         det_preds = self.det_head.predict(inputs, det_data_samples)
         data_samples = det_to_spotting(det_preds, data_samples)
-        recog_preds = self.roi_head.predict(inputs, data_samples)
-        return recog_preds
+        data_samples = self.roi_head.predict(inputs, data_samples)
+        return data_samples
+
+    def _forward(self, inputs, data_samples):
+        inputs = self.extract_feat(inputs)
+        det_data_samples = spotting_to_det(data_samples)
+        det_preds = self.det_head.predict(inputs, det_data_samples)
+        data_samples = det_to_spotting(det_preds, data_samples)
+        return self.roi_head(inputs, data_samples)
