@@ -4,8 +4,8 @@ from mmocr.registry import MODELS
 from mmocr.structures import TextDetDataSample  # noqa: F401
 from mmocr.structures import TextRecogDataSample  # noqa: F401
 from mmocr.structures import TextSpottingDataSample  # noqa: F401
+from mmocr.utils import OptConfigType, OptMultiConfig
 from mmocr.utils.data_sample_convert import det_to_spotting, spotting_to_det
-from mmocr.utils.typing import OptConfigType, OptMultiConfig
 
 
 @MODELS.register_module()
@@ -58,10 +58,10 @@ class TwoStageTextSpotter(BaseTextDetector):
         ]
         det_loss, det_preds = self.det_head.loss_and_predict(
             inputs, det_data_samples)
-        data_samples = det_to_spotting(det_preds, data_samples)
+        # data_samples = det_to_spotting(det_preds, data_samples)
         losses.update(det_loss)
 
-        roi_losses = self.roi_head.loss(inputs, data_samples)
+        roi_losses = self.roi_head.loss(inputs, det_preds)
         losses.update(roi_losses)
         return losses
 

@@ -200,9 +200,8 @@ class ABCNetDetModuleLoss(BaseTextDetModuleLoss):
             loss_centerness=loss_centerness,
             loss_bezier=loss_bezier)
 
-    def get_targets(
-            self, points: List[Tensor],
-            data_samples: DetSampleList) -> Tuple[List[Tensor], List[Tensor]]:
+    def get_targets(self, points: List[Tensor], data_samples: DetSampleList
+                    ) -> Tuple[List[Tensor], List[Tensor]]:
         """Compute regression, classification and centerness targets for points
         in multiple images.
 
@@ -271,16 +270,21 @@ class ABCNetDetModuleLoss(BaseTextDetModuleLoss):
         return (concat_lvl_labels, concat_lvl_bbox_targets,
                 concat_lvl_bezier_targets)
 
-    def _get_targets_single(
-            self, data_sample, points: Tensor, regress_ranges: Tensor,
-            num_points_per_lvl: List[int]) -> Tuple[Tensor, Tensor]:
+    def _get_targets_single(self, data_sample, points: Tensor,
+                            regress_ranges: Tensor,
+                            num_points_per_lvl: List[int]
+                            ) -> Tuple[Tensor, Tensor]:
         """Compute regression and classification targets for a single image."""
         num_points = points.size(0)
         gt_instances = data_sample.gt_instances
+        gt_instances = gt_instances[~gt_instances.ignored]
         num_gts = len(gt_instances)
         gt_bboxes = gt_instances.bboxes
         gt_labels = gt_instances.labels
-
+        data_sample.gt_instances = gt_instances
+        polygons = gt_instances.polygons
+        beziers = gt_bboxes.new([poly2bezier(poly) for poly in polygons])
+        gt_instances.beziers = beziers
         if num_gts == 0:
             return gt_labels.new_full((num_points,), self.num_classes), \
                    gt_bboxes.new_zeros((num_points, 4)), \
@@ -303,10 +307,9 @@ class ABCNetDetModuleLoss(BaseTextDetModuleLoss):
         top = ys - gt_bboxes[..., 1]
         bottom = gt_bboxes[..., 3] - ys
         bbox_targets = torch.stack((left, top, right, bottom), -1)
-        polygons = gt_instances.polygons
-        beziers = gt_bboxes.new([poly2bezier(poly) for poly in polygons])
-        gt_instances.beziers = beziers
-        beziers = beziers[None].expand(num_points, num_gts, 8, 2)
+
+        beziers = beziers.reshape(-1, 8,
+                                  2)[None].expand(num_points, num_gts, 8, 2)
         beziers_left = beziers[..., 0] - xs[..., None]
         beziers_right = beziers[..., 1] - ys[..., None]
         bezier_targets = torch.stack((beziers_left, beziers_right), dim=-1)

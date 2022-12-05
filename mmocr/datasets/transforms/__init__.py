@@ -6,9 +6,9 @@ from .loading import (LoadImageFromFile, LoadImageFromLMDB,
                       LoadOCRAnnotations)
 from .ocr_transforms import RandomCrop, RandomRotate, Resize
 from .textdet_transforms import (BoundedScaleAspectJitter, FixInvalidPolygon,
-                                 RandomFlip, ShortScaleAspectJitter,
-                                 SourceImagePad, TextDetRandomCrop,
-                                 TextDetRandomCropFlip)
+                                 RandomFlip, RemoveIgnored,
+                                 ShortScaleAspectJitter, SourceImagePad,
+                                 TextDetRandomCrop, TextDetRandomCropFlip)
 from .textrecog_transforms import PadToWidth, PyramidRescale, RescaleToHeight
 from .wrappers import ImgAugWrapper, TorchVisionWrapper
 
@@ -20,5 +20,5 @@ __all__ = [
     'ShortScaleAspectJitter', 'RandomFlip', 'BoundedScaleAspectJitter',
     'PackKIEInputs', 'LoadKIEAnnotations', 'FixInvalidPolygon', 'MMDet2MMOCR',
     'MMOCR2MMDet', 'LoadImageFromLMDB', 'LoadImageFromFile',
-    'LoadImageFromNDArray'
+    'LoadImageFromNDArray', 'RemoveIgnored'
 ]

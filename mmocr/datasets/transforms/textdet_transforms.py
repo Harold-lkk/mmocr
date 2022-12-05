@@ -917,3 +917,18 @@ class TextDetRandomCrop(BaseTransform):
         repr_str += f'(target_size = {self.target_size}, '
         repr_str += f'positive_sample_ratio = {self.positive_sample_ratio})'
         return repr_str
+
+
+@TRANSFORMS.register_module()
+class RemoveIgnored(BaseTransform):
+
+    def transform(self, results: Dict):
+        gt_ignored = results['gt_ignored']
+        need_index = np.where(~gt_ignored)[0]
+        results['gt_ignored'] = gt_ignored[need_index]
+        results['gt_bboxes'] = results['gt_bboxes'][need_index]
+        gt_polygons = results['gt_polygons']
+        new_gt_polygon = [gt_polygons[i] for i in need_index]
+        results['gt_polygons'] = new_gt_polygon
+        results['gt_bboxes_labels'] = results['gt_bboxes_labels'][need_index]
+        return results

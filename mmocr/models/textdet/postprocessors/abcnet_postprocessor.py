@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from functools import partial
 from typing import List
 
 import numpy as np
@@ -205,3 +206,29 @@ class ABCNetDetPostprocessor(BaseTextDetPostProcessor):
             return bboxes, scores, labels, centernesses, bezier_preds
         else:
             return bboxes, scores, labels, centernesses
+
+    def __call__(self, pred_results, data_samples, training: bool = False):
+        """Postprocess pred_results according to metainfos in data_samples.
+
+        Args:
+            pred_results (Union[Tensor, List[Tensor]]): The prediction results
+                stored in a tensor or a list of tensor. Usually each item to
+                be post-processed is expected to be a batched tensor.
+            data_samples (list[TextDetDataSample]): Batch of data_samples,
+                each corresponding to a prediction result.
+            training (bool): Whether the model is in training mode. Defaults to
+                False.
+
+        Returns:
+            list[TextDetDataSample]: Batch of post-processed datasamples.
+        """
+        if training:
+            return data_samples
+        cfg = self.train_cfg if training else self.test_cfg
+        if cfg is None:
+            cfg = {}
+        pred_results = self.split_results(pred_results)
+        process_single = partial(self._process_single, **cfg)
+        results = list(map(process_single, pred_results, data_samples))
+
+        return results

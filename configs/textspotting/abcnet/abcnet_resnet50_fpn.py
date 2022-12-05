@@ -2,7 +2,7 @@ _base_ = [
     '_base_abcnet-det_resnet50_fpn.py',
     '../_base_/datasets/icdar2015.py',
     '../_base_/default_runtime.py',
-    '../_base_/schedules/schedule_sgd_1200e.py',
+    '../_base_/schedules/schedule_sgd_500e.py',
 ]
 
 # dataset settings
@@ -28,3 +28,5 @@ val_dataloader = dict(
 test_dataloader = val_dataloader
 
 auto_scale_lr = dict(base_batch_size=16)
+
+load_from = 'checkpoints/v1_ic15_pretrained_mmocr.pth'

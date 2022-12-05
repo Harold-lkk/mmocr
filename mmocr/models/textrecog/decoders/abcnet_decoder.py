@@ -155,6 +155,5 @@ class ABCDecoder(BaseDecoder):
 
         output = F.relu(output)
         output, hidden = self.gru(output, hidden)  # (1, n, hidden_size)
-
-        output = F.log_softmax(self.out(output[0]), dim=1)  # (n, hidden_size)
+        output = self.out(output[0])
         return output, hidden

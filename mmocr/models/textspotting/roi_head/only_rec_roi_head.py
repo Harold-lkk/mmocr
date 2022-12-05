@@ -5,9 +5,9 @@ from torch import Tensor
 
 from mmocr.registry import MODELS, TASK_UTILS
 from mmocr.structures import TextRecogDataSample  # noqa F401
+from mmocr.utils import DetSampleList, OptMultiConfig
 from mmocr.utils.data_sample_convert import (instance_data2recog,
                                              merge_recog2spotting)
-from mmocr.utils.typing import DetSampleList, OptMultiConfig
 from .base import BaseRoIHead
 
 
@@ -45,12 +45,12 @@ class OnlyRecRoIHead(BaseRoIHead):
 
         # assign gts and sample proposals
         proposals = [
-            self.sampler(ds.pred_instances, ds.gt_instances)
-            for ds in data_samples
+            ds.gt_instances[~ds.gt_instances.ignored] for ds in data_samples
         ]
 
+        proposals = [p for p in proposals if len(p) > 0]
         bbox_feats = self.roi_extractor(inputs, proposals)
-        rec_data_samples = instance_data2recog(proposals)
+        rec_data_samples = instance_data2recog(proposals, self.training)
         rec_loss = self.rec_head.loss(bbox_feats, rec_data_samples)
 
         return rec_loss

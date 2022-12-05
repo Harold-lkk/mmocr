@@ -74,9 +74,7 @@ model = dict(
             center_sampling=True,
             center_sample_radius=1.5,
             bbox_coder=bbox_coder,
-            with_bezier=with_bezier,
             norm_on_bbox=norm_on_bbox,
-            use_sigmoid_cls=use_sigmoid_cls,
             loss_cls=dict(
                 type='mmdet.FocalLoss',
                 use_sigmoid=use_sigmoid_cls,
@@ -118,7 +116,7 @@ model = dict(
                 postprocessor=dict(type='AttentionPostprocessor'),
                 module_loss=dict(
                     type='CEModuleLoss',
-                    ignore_first_char=True,
+                    ignore_first_char=False,
                     reduction='mean'),
                 max_seq_len=25))))
 
@@ -139,4 +137,31 @@ test_pipeline = [
         meta_keys=('img_path', 'ori_shape', 'img_shape', 'scale_factor'))
 ]
 
-train_pipeline = test_pipeline
+train_pipeline = [
+    dict(
+        type='LoadImageFromFile',
+        file_client_args=file_client_args,
+        color_type='color_ignore_orientation'),
+    dict(
+        type='LoadOCRAnnotations',
+        with_polygon=True,
+        with_bbox=True,
+        with_label=True,
+        with_text=True),
+    dict(type='RemoveIgnored'),
+    dict(type='RandomCrop', min_side_ratio=0.1),
+    dict(
+        type='RandomRotate',
+        max_angle=30,
+        pad_with_fixed_color=True,
+        use_canvas=True),
+    dict(
+        type='RandomChoiceResize',
+        scales=[(980, 2900), (1044, 2900), (1108, 2900), (1172, 2900),
+                (1236, 2900), (1300, 2900), (1364, 2900), (1428, 2900),
+                (1492, 2900)],
+        keep_ratio=True),
+    dict(
+        type='PackTextDetInputs',
+        meta_keys=('img_path', 'ori_shape', 'img_shape', 'scale_factor'))
+]
