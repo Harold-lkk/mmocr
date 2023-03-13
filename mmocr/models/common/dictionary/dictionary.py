@@ -114,6 +114,48 @@ class Dictionary:
                                 ' or set "with_unknown=True"')
         return char_idx
 
+    def fullwidth2halfwidth(self, string: str) -> str:
+        """Convert fullwidth characters to halfwidth characters. For example,
+        '１２３４５' will be converted to '12345'.
+
+        Args:
+            string (str): The string to convert.
+
+        Returns:
+            str: The converted string.
+        """
+        halfwidth = ''
+        for char in string:
+            inside_code = ord(char)
+            # convert space to halfwidth space
+            if inside_code == 12288:
+                inside_code = 32
+            elif (inside_code >= 65281 and inside_code <= 65374):
+                inside_code -= 65248
+            halfwidth += chr(inside_code)
+        return halfwidth
+
+    def halfwidth2fullwidth(self, string: str) -> str:
+        """Convert halfwidth characters to fullwidth characters. For example,
+        '12345' will be converted to '１２３４５'.
+
+        Args:
+            string (str): The string to convert.
+
+        Returns:
+            str: The converted string.
+        """
+        fullwidth = ''
+        for char in string:
+            inside_code = ord(char)
+            # convert halfwidth space to fullwidth space
+            if inside_code == 32:
+                inside_code = 12288
+            elif (inside_code >= 33 and inside_code <= 126):
+                inside_code += 65248
+            fullwidth += chr(inside_code)
+        return fullwidth
+
     def str2idx(self, string: str) -> List:
         """Convert a string to a list of indexes via ``Dictionary.dict``.
 
@@ -123,6 +165,7 @@ class Dictionary:
         Return:
             list: The list of indexes of the string.
         """
+        string = self.fullwidth2halfwidth(string)
         idx = list()
         for s in string:
             char_idx = self.char2idx(s)

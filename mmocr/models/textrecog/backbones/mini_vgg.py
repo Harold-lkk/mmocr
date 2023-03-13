@@ -25,8 +25,8 @@ class MiniVGG(BaseModule):
                  ]):
         super().__init__(init_cfg=init_cfg)
 
-        ks = [3, 3, 3, 3, 3, 3, 2]
-        ps = [1, 1, 1, 1, 1, 1, 0]
+        ks = [3, 3, 3, 3, 3, 3, 3]
+        ps = [1, 1, 1, 1, 1, 1, 1]
         ss = [1, 1, 1, 1, 1, 1, 1]
         nm = [64, 128, 256, 256, 512, 512, 512]
 
@@ -48,20 +48,18 @@ class MiniVGG(BaseModule):
                 cnn.add_module(f'relu{i}', nn.ReLU(True))
 
         conv_relu(0)
-        cnn.add_module(f'pooling{0}', nn.MaxPool2d(2, 2))  # 64x16x64
+        cnn.add_module(f'pooling{0}', nn.MaxPool2d((2, 2), (1, 2), (1, 0)))
         conv_relu(1)
-        cnn.add_module(f'pooling{1}', nn.MaxPool2d(2, 2))  # 128x8x32
+        cnn.add_module(f'pooling{1}', nn.MaxPool2d((2, 2), (1, 2), (1, 0)))
         conv_relu(2, True)
         conv_relu(3)
-        cnn.add_module(f'pooling{2}', nn.MaxPool2d((2, 2), (2, 1),
-                                                   (0, 1)))  # 256x4x16
+        cnn.add_module(f'pooling{2}', nn.MaxPool2d((2, 2), (2, 1), (0, 1)))
         conv_relu(4, True)
         conv_relu(5)
-        cnn.add_module(f'pooling{3}', nn.MaxPool2d((2, 2), (2, 1),
-                                                   (0, 1)))  # 512x2x16
-        conv_relu(6, True)  # 512x1x16
-
+        cnn.add_module(f'pooling{3}', nn.MaxPool2d((2, 2), (2, 1), (0, 1)))
+        conv_relu(6, True)
         self.cnn = cnn
+        self.adatp_pooling = nn.AdaptiveAvgPool2d((1, None))
 
     def out_channels(self):
         return self.channels[-1]
@@ -75,5 +73,5 @@ class MiniVGG(BaseModule):
             Tensor: The feature Tensor of shape :math:`(N, 512, H/32, (W/4+1)`.
         """
         output = self.cnn(x)
-
+        output = self.adatp_pooling(output)
         return output

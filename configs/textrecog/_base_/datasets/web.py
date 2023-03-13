@@ -1,0 +1,19 @@
+web_lmdb_textrecog_data_root = 'data/web/'
+web_lmdb_textrecog_train = dict(
+    type='RecogLMDBDataset',
+    data_root=web_lmdb_textrecog_data_root,
+    ann_file='web_train',
+    pipeline=None)
+web_lmdb_textrecog_test = dict(
+    type='RecogLMDBDataset',
+    data_root=web_lmdb_textrecog_data_root,
+    ann_file='web_test/',
+    test_mode=True,
+    pipeline=None)
+
+web_lmdb_textrecog_val = dict(
+    type='RecogLMDBDataset',
+    data_root=web_lmdb_textrecog_data_root,
+    ann_file='web_val',
+    test_mode=True,
+    pipeline=None)
